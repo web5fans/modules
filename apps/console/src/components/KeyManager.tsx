@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { Check, AlertCircle, Shield, PenTool, CheckCircle } from 'lucide-react';
@@ -6,8 +5,7 @@ import { bytesFrom, hexFrom } from '@ckb-ccc/ccc';
 
 export function KeyManager() {
   const { client, connected } = useKeystore();
-  
-  // States for operation results
+
   const [pingStatus, setPingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [pingResult, setPingResult] = useState('');
 
@@ -85,15 +83,14 @@ export function KeyManager() {
 
   const renderStatus = (status: string, result: string) => {
     if (status === 'idle') return null;
-    if (status === 'loading') return <div className="text-sm text-muted italic">Processing...</div>;
-    
+    if (status === 'loading') return <div className="text-sm text-muted">Processing...</div>;
+
     const isSuccess = status === 'success';
     return (
-      <div className={`text-sm p-sm rounded flex items-center gap-sm break-all ${isSuccess ? 'bg-green-50 text-success border border-green-200' : 'bg-red-50 text-danger border border-red-200'}`} style={{ 
-          background: isSuccess ? '#f0fdf4' : '#fef2f2',
-          color: isSuccess ? '#16a34a' : '#991b1b',
-          borderColor: isSuccess ? '#bbf7d0' : '#fecaca'
-      }}>
+      <div
+        className={`p-sm rounded flex items-center gap-sm break-all ${isSuccess ? 'badge-success' : 'badge-error'}`}
+        style={{ display: 'flex' }}
+      >
         {isSuccess ? <Check size={16} /> : <AlertCircle size={16} />}
         <span className="font-mono text-xs">{result}</span>
       </div>
@@ -101,29 +98,42 @@ export function KeyManager() {
   };
 
   return (
-    <div className="container">
-      <div className="flex items-center gap-md mb-lg">
-        <div className="bg-primary-light p-sm rounded text-primary" style={{ background: '#e0e7ff', color: '#4338ca' }}>
-          <Shield size={24} />
+    <div>
+      {/* Header */}
+      <div className="flex items-center gap-md mb-xl">
+        <div
+          className="p-md rounded-lg"
+          style={{ background: 'var(--primary-light)' }}
+        >
+          <Shield size={28} color="var(--primary-color)" />
         </div>
         <div>
-          <h2 className="m-0 text-lg">Key Manager</h2>
-          <div className="text-muted text-sm">Test connection and signing capabilities</div>
+          <h2 className="m-0 text-xl" style={{ color: 'var(--text-heading)' }}>Key Manager</h2>
+          <p className="m-0 text-muted">Test connection and signing capabilities</p>
         </div>
       </div>
 
+      {/* Basic Actions */}
       <div className="card">
-        <h3 className="flex items-center gap-sm mb-md text-sm">Basic Actions</h3>
-        <div className="flex-col">
-          <div className="flex items-center gap-md">
-            <button className="btn btn-secondary" onClick={handlePing} disabled={!connected || pingStatus === 'loading'}>
+        <h3 className="flex items-center gap-sm mb-lg">Basic Actions</h3>
+        <div className="flex-col gap-md">
+          <div className="flex items-center gap-md flex-wrap">
+            <button
+              className="btn btn-secondary"
+              onClick={handlePing}
+              disabled={!connected || pingStatus === 'loading'}
+            >
               Ping Bridge
             </button>
             {renderStatus(pingStatus, pingResult)}
           </div>
-          
-          <div className="flex items-center gap-md">
-            <button className="btn btn-secondary" onClick={handleGetDID} disabled={!connected || didStatus === 'loading'}>
+
+          <div className="flex items-center gap-md flex-wrap">
+            <button
+              className="btn btn-secondary"
+              onClick={handleGetDID}
+              disabled={!connected || didStatus === 'loading'}
+            >
               Get DID Key
             </button>
             {renderStatus(didStatus, didResult)}
@@ -131,49 +141,59 @@ export function KeyManager() {
         </div>
       </div>
 
+      {/* Sign Message */}
       <div className="card">
-        <h3 className="flex items-center gap-sm mb-md text-sm">
+        <h3 className="flex items-center gap-sm mb-lg">
           <PenTool size={18} /> Sign Message
         </h3>
         <div className="flex gap-sm mb-md">
-          <input 
+          <input
             className="input flex-1"
-            value={signMsg} 
-            onChange={(e) => setSignMsg(e.target.value)} 
+            value={signMsg}
+            onChange={(e) => setSignMsg(e.target.value)}
             placeholder="Message to sign"
           />
-          <button className="btn btn-primary" onClick={handleSign} disabled={!connected || signStatus === 'loading'}>
+          <button
+            className="btn btn-primary"
+            onClick={handleSign}
+            disabled={!connected || signStatus === 'loading'}
+          >
             {signStatus === 'loading' ? 'Signing...' : 'Sign'}
           </button>
         </div>
         {renderStatus(signStatus, signResult)}
       </div>
 
+      {/* Verify Signature */}
       <div className="card">
-        <h3 className="flex items-center gap-sm mb-md text-sm">
+        <h3 className="flex items-center gap-sm mb-lg">
           <CheckCircle size={18} /> Verify Signature
         </h3>
-        <div className="flex-col mb-md">
-          <input 
+        <div className="flex-col gap-sm mb-md">
+          <input
             className="input"
-            value={verifyDid} 
-            onChange={(e) => setVerifyDid(e.target.value)} 
+            value={verifyDid}
+            onChange={(e) => setVerifyDid(e.target.value)}
             placeholder="DID Key"
           />
-          <input 
+          <input
             className="input"
-            value={verifyMsg} 
-            onChange={(e) => setVerifyMsg(e.target.value)} 
+            value={verifyMsg}
+            onChange={(e) => setVerifyMsg(e.target.value)}
             placeholder="Message"
           />
-          <input 
+          <input
             className="input"
-            value={verifySig} 
-            onChange={(e) => setVerifySig(e.target.value)} 
+            value={verifySig}
+            onChange={(e) => setVerifySig(e.target.value)}
             placeholder="Signature Hex"
           />
           <div className="flex justify-end">
-            <button className="btn btn-primary" onClick={handleVerify} disabled={!connected || verifyStatus === 'loading'}>
+            <button
+              className="btn btn-primary"
+              onClick={handleVerify}
+              disabled={!connected || verifyStatus === 'loading'}
+            >
               {verifyStatus === 'loading' ? 'Verifying...' : 'Verify'}
             </button>
           </div>
