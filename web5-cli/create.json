@@ -1,0 +1,68 @@
+{
+  "version": "0x0",
+  "cellDeps": [
+    {
+      "outPoint": {
+        "txHash": "0x0e7a830e2d5ebd05cd45a55f93f94559edea0ef1237b7233f49f7facfb3d6a6c",
+        "index": "0x0"
+      },
+      "depType": "code"
+    },
+    {
+      "outPoint": {
+        "txHash": "0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37",
+        "index": "0x0"
+      },
+      "depType": "depGroup"
+    }
+  ],
+  "headerDeps": [],
+  "inputs": [
+    {
+      "previousOutput": {
+        "txHash": "0xe127ad5851ea8832925697a107d3c63f2348f95035070677455f0eb859ccdbd0",
+        "index": "0x1"
+      },
+      "since": "0x0",
+      "cellOutput": {
+        "capacity": "0x108de385cc",
+        "lock": {
+          "codeHash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+          "hashType": "type",
+          "args": "0x8eee686f4572d23a091e718b12bf295c821fa57d"
+        }
+      },
+      "outputData": "0x"
+    }
+  ],
+  "outputs": [
+    {
+      "capacity": "0x849ece400",
+      "lock": {
+        "codeHash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+        "hashType": "type",
+        "args": "0x8eee686f4572d23a091e718b12bf295c821fa57d"
+      },
+      "type": {
+        "codeHash": "0x510150477b10d6ab551a509b71265f3164e9fd4137fcb5a4322f49f03092c7c5",
+        "hashType": "type",
+        "args": "0xb8d05f62eafd77fa48a3a72e77804ea4f31d3172"
+      }
+    },
+    {
+      "capacity": "0x843f637e6",
+      "lock": {
+        "codeHash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+        "hashType": "type",
+        "args": "0x8eee686f4572d23a091e718b12bf295c821fa57d"
+      }
+    }
+  ],
+  "outputsData": [
+    "0x00000000ee0000000c000000ee000000de000000a3687365727669636573a16b617470726f746f5f706473a264747970657819417470726f746f506572736f6e616c4461746153657276657268656e64706f696e74781868747470733a2f2f776562352e62627366616e732e6465766b616c736f4b6e6f776e417381781c61743a2f2f6461766964322e776562352e62627366616e732e64657673766572696669636174696f6e4d6574686f6473a167617470726f746f78396469643a6b65793a7a51337368516d4a38624437394d47796138395731676474576648746f68584b72726478643343455851794a6e7a516d57",
+    "0x"
+  ],
+  "witnesses": [
+    "0x55000000100000005500000055000000410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  ]
+}
