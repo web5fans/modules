@@ -11,7 +11,7 @@ const program = new Command()
 program
   .name('web5-cli')
   .description('Web5 CLI tool for interacting with Web5 infrastructure')
-  .version('0.0.1')
+  .version('0.1.2')
 
 program.addCommand(createKeystoreCommand())
 program.addCommand(createWalletCommand())

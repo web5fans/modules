@@ -335,7 +335,7 @@ export async function writePDS(agent: AtpAgent, accessJwt: string, didKey: strin
     const rkey = params.rkey || TID.next().toString()
 
     const newRecord = {
-      created: new Date().toISOString(),
+      created: new Date().toISOString().split('.')[0] + 'Z',
       ...params.record,
     }
 

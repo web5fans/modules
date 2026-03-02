@@ -1,6 +1,6 @@
 ---
 name: web5-cli
-description: Use when working with Web5 CLI tool for decentralized identity, CKB wallet, DID management, and PDS data operations
+description: Use when working with Web5 CLI tool for decentralized identity, CKB wallet, DID management, PDS data operations, account creation, posting, profile updates
 ---
 
 # Web5 CLI
@@ -55,49 +55,92 @@ web5-cli did list --ckb-addr <address>                   # List DID cells
 ```bash
 web5-cli pds check-username --username <name>
 web5-cli pds get-did-by-username --username <name>
-web5-cli pds create-account --pds <url> --username <name> --didkey <key> --did <did> --ckb-address <addr>
-web5-cli pds login --pds <url> --didkey <key> --did <did> --ckb-address <addr>
-web5-cli pds write --pds <url> --accessJwt <jwt> --didkey <key> --did <did> --rkey <key> --data <json>
-web5-cli pds repo --pds <url> --did <did>
-web5-cli pds records --pds <url> --did <did> --collection <nsid> [--limit N] [--cursor <cursor>]
-web5-cli pds export --pds <url> --did <did> --data-file <path> [--since <cid>]
-web5-cli pds import --pds <url> --did <did> --accessJwt <jwt> --data-file <path>
+web5-cli pds create-account --pds <domain> --username <name> --didkey <key> --did <did> --ckb-address <addr>
+web5-cli pds login --pds <domain> --didkey <key> --did <did> --ckb-address <addr>
+web5-cli pds write --pds <domain> --accessJwt <jwt> --didkey <key> --did <did> --rkey <key> --data <json>
+web5-cli pds repo --pds <domain> --did <did>
+web5-cli pds records --pds <domain> --did <did> --collection <nsid> [--limit N] [--cursor <cursor>]
+web5-cli pds export --pds <domain> --did <did> --data-file <path> [--since <cid>]
+web5-cli pds import --pds <domain> --did <did> --accessJwt <jwt> --data-file <path>
 ```
 
 ## Configuration
 
 - **Keystore**: Private key stored at `~/.web5-cli/signkey`
 - **Wallet**: Private key stored at `~/.web5-cli/ckb-sk`
+- **Account Info**: Stored at `~/.web5-cli/account.json` after account creation (includes Username, DID, Handle, didkey, ckb address, PDS domain, etc.)
 - **Network**: Set via `CKB_NETWORK` environment variable (`ckb_testnet` or `ckb`)
 
 ## Output Format
 
 All commands output JSON format for easy parsing by AI agents and scripts.
 
-## Common Workflows
+## Notes
+* --pds arg no 'https://' or 'http://' prefix, just the hostname
+* one account only and always belong to one pds
+* only one did and one account in same time
+* Don't modify or delete the key/wallet files directly, use the CLI commands to manage them, and need user confirmation for destructive actions like `keystore clean` or `wallet clean`
 
-### Create Account
-1. `web5-cli keystore new` - Create signing key
-2. `web5-cli wallet new` - Create CKB wallet (requires over 450 testnet CKB)
-3. `web5-cli did build-create-tx ...` - Build DID creation tx
-4. `web5-cli wallet send-tx --tx-path <tx-file>` - Submit tx
-5. `web5-cli wallet check-tx --tx-hash <hash>` - Confirm tx committed
-6. wait 30s
-7. `web5-cli pds create-account ...` - Create PDS account
+## Workflow Scripts
 
-### Write Data
-1. `web5-cli pds login ...` - Get access token
-2. `web5-cli pds write ...` - Write record with accessJwt
+Use these Python scripts for common multi-step operations:
+
+### create account 
+1. call `web5-cli wallet get` check if wallet exists and get ckb address
+2. if no wallet, create wallet and get ckb address
+3. call `web5-cli wallet balance` check if balance > 450 testnet CKB
+4. if no balance, prompt user to transfer some ckb to ckb address and wait for confirmation
+5. once have enough balance, call `scripts/create_account.py` to complete account creation (keystore + wallet + DID + PDS)
+6. write account info (includes Username, DID, Handle, didkey, ckb address, PDS domain, etc) to `~/.web5-cli/account.json` for later use (like posting, profile update)
+
+### destroy account
+1. call `scripts/destroy_account.py` to complete account destruction (delete PDS Account then destory DID cell, don't delete wallet or keystore since they can be reused for new accounts)
+2. delete `~/.web5-cli/account.json` after account destroyed
+
+### update profile
+1. get account info from `~/.web5-cli/account.json`, if not exist, notify user to create account first and exit
+2. prompt user to input new profile info (like displayName, handle, etc), and construct json data for writing to pds
+4. call `web5-cli pds login --pds <domain> --didkey <didkey> --did <did> --ckb-address <addr>` with the correct parameters to get an access jwt for PDS operations, if login failed, notify user and exit
+5. call `web5-cli pds write --pds <domain> --accessJwt <jwt> --didkey <key> --did <did> --rkey 'self' --data <json>` to update profile record in PDS, with the correct parameters. json data should be in the format of 
+```
+{
+  $type: 'app.actor.profile'
+  displayName: string;
+  handle: string;
+  [key: string]: any;
+}
+```
+
+### post to bbs
+1. get account info from `~/.web5-cli/account.json`, if not exist, notify user to create account first and exit
+2. prompt user to input post info (like section_id, title, text), and construct json data for writing to pds. about section_id, you can use "3" or "4" for now. 
+3. call `web5-cli pds login --pds <domain> --didkey <didkey> --did <did> --ckb-address <addr>` with the correct parameters to get an access jwt for PDS operations, if login failed, notify user and exit
+4. call `web5-cli pds write --pds <domain> --accessJwt <jwt> --didkey <key> --did <did> --data <json>` (--rkey is no need) to create a new post in PDS, with the correct parameters. json data should be in the format of 
+```
+{
+  $type: 'app.bbs.post'
+  section_id: string;
+  title: string;
+  text: string;
+}
+```
+
+
+### Script Examples
+
+```bash
+# Create a complete account
+python create_account.py alice web5.bbsfans.dev
+
+# destroy the account
+python destroy_account.py alice web5.bbsfans.dev
+```
 
 ## Security Notes
 
 - Private keys are stored in plaintext for this technical validation tool
 - Do NOT use in production environments
 - This is a proof-of-concept for AI-agent-driven Web5 interactions
-
-## Notes
-* --pds arg no https:// prefix, just the hostname
-* one account always belong to one pds
 
 ## public information
 avliable pds url:
@@ -141,7 +184,7 @@ avliable data structure for writing to pds:
 ```
 {
   $type: 'app.bbs.like'
-  to: string; // 点赞的帖子uri或者评论\回复的uri
+  to: string;
   section_id: string;
 }
 ```
@@ -149,9 +192,9 @@ avliable data structure for writing to pds:
 ```
 {
   $type: 'app.bbs.reply'
-  post: string    // 帖子的uri
-  comment?: string   // 跟帖的uri
-  to?: string   // 对方did, 有就填，没有就是直接回复评论的
+  post: string
+  comment?: string
+  to?: string
   text: string
   section_id: string
   edited?: string
@@ -161,10 +204,10 @@ avliable data structure for writing to pds:
 ```
 {
   $type: 'app.dao.reply'
-  proposal: string    // 提案的uri
-  to?: string   // 对方did（可选，有就是回复某人）
-  text: string  // 评论内容
-  parent?: string  // 父评论的uri（可选，用于回复评论）
+  proposal: string
+  to?: string
+  text: string
+  parent?: string
 }
 ```
 * proposal of dao
@@ -178,7 +221,7 @@ avliable data structure for writing to pds:
 ```
 {
   $type: 'app.dao.like'
-  to: string; // 点赞的帖子uri或者评论\回复的uri
-  viewer: string;//点赞的人的did
+  to: string;
+  viewer: string;
 }
 ```

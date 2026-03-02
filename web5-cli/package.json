@@ -1,6 +1,6 @@
 {
   "name": "web5-cli",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Web5 CLI tool for decentralized identity and data management",
   "type": "module",
   "bin": {

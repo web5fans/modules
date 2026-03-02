@@ -245,7 +245,7 @@ export const pdsManager: PdsManager = {
 
       const record = JSON.parse(data)
       const newRecord = {
-        created: new Date().toISOString(),
+        created: new Date().toISOString().split('.')[0] + 'Z',
         ...record,
       }
       const { TID } = await import('@atproto/common-web')
