@@ -54,8 +54,8 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
   const [createdDid, setCreatedDid] = useState('');
   const [txHash, setTxHash] = useState('');
   const [existingDidInfo, setExistingDidInfo] = useState<ExistingDidInfo | null>(null);
-  const [hasCheckedDid, setHasCheckedDid] = useState(false);
   const [ckbAddress, setCkbAddress] = useState('');
+  const [balance, setBalance] = useState<string>('');
 
   // Helper to get total steps for progress calculation
   const getTotalSteps = () => step === 'existing-did' ? 2 : 6;
@@ -76,62 +76,73 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
     return endpoint.replace('https://', '');
   };
 
-  // Effect to check DID cells after wallet connection
+  // Effect to get wallet info after connection
   useEffect(() => {
-    const checkDidCells = async () => {
-      if (!signer || hasCheckedDid || step !== 1) return;
-
-      setIsLoading(true);
-      setError('');
+    const fetchWalletInfo = async () => {
+      if (!signer || step !== 1) return;
 
       try {
         const address = await signer.getRecommendedAddress();
         setCkbAddress(address);
         
-        const didCells = await fetchDidCkbCellsInfo(signer);
-        
-        if (didCells.length > 0) {
-          // Parse first DID cell
-          const didInfo = didCells[0];
-          const metadata = JSON.parse(didInfo.didMetadata);
-          const didKeyFromMetadata = metadata.verificationMethods?.atproto;
-          const alsoKnownAs = metadata.alsoKnownAs?.[0]; // "at://username.pds"
-          const pdsEndpoint = metadata.services?.atproto_pds?.endpoint; // "https://pds.host"
-          
-          // Extract username and pds from alsoKnownAs
-          const handleInfo = alsoKnownAs ? parseHandle(alsoKnownAs) : null;
-          const username = handleInfo?.username || '';
-          const pds = pdsEndpoint ? parsePdsFromEndpoint(pdsEndpoint) : (handleInfo?.pds || '');
-          
-          // Store this info and go to existing DID flow
-          setExistingDidInfo({ 
-            did: didInfo.did, 
-            didKey: didKeyFromMetadata, 
-            username, 
-            pds, 
-            metadata: didInfo.didMetadata 
-          });
-          setStep('existing-did');
-        } else {
-          // No DID, continue to registration flow
-          setStep(2);
-        }
-        
-        setHasCheckedDid(true);
+        const balanceResult = await signer.getBalance();
+        // Format balance to show as CKB (divide by 100000000)
+        const balanceInCkb = (Number(balanceResult) / 100000000).toFixed(4);
+        setBalance(balanceInCkb);
       } catch (e: unknown) {
-        console.error('Failed to query DID:', e);
-        setError(e instanceof Error ? e.message : 'Failed to query DID');
-        setHasCheckedDid(true);
-        setStep(2); // Continue to registration on error
-      } finally {
-        setIsLoading(false);
+        console.error('Failed to fetch wallet info:', e);
       }
     };
 
-    if (signer && !hasCheckedDid && step === 1) {
-      checkDidCells();
+    if (signer) {
+      fetchWalletInfo();
     }
-  }, [signer, hasCheckedDid, step]);
+  }, [signer, step]);
+
+  // Function to check DID and continue
+  const handleCheckDidAndContinue = async () => {
+    if (!signer) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const didCells = await fetchDidCkbCellsInfo(signer);
+      
+      if (didCells.length > 0) {
+        // Parse first DID cell
+        const didInfo = didCells[0];
+        const metadata = JSON.parse(didInfo.didMetadata);
+        const didKeyFromMetadata = metadata.verificationMethods?.atproto;
+        const alsoKnownAs = metadata.alsoKnownAs?.[0]; // "at://username.pds"
+        const pdsEndpoint = metadata.services?.atproto_pds?.endpoint; // "https://pds.host"
+        
+        // Extract username and pds from alsoKnownAs
+        const handleInfo = alsoKnownAs ? parseHandle(alsoKnownAs) : null;
+        const username = handleInfo?.username || '';
+        const pds = pdsEndpoint ? parsePdsFromEndpoint(pdsEndpoint) : (handleInfo?.pds || '');
+        
+        // Store this info and go to existing DID flow
+        setExistingDidInfo({
+          did: didInfo.did,
+          didKey: didKeyFromMetadata,
+          username,
+          pds,
+          metadata: didInfo.didMetadata
+        });
+        setStep('existing-did');
+      } else {
+        // No DID, continue to registration flow
+        setStep(2);
+      }
+    } catch (e: unknown) {
+      console.error('Failed to query DID:', e);
+      setError(e instanceof Error ? e.message : 'Failed to query DID');
+      setStep(2); // Continue to registration on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleConnectWallet = () => {
     if (!wallet) {
@@ -288,15 +299,39 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {wallet ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <Check className="h-5 w-5" />
-                  <span>Wallet connected</span>
-                </div>
-              ) : (
+              {!wallet ? (
                 <div className="flex items-center gap-2 text-amber-600">
                   <AlertCircle className="h-5 w-5" />
                   <span>No wallet connected</span>
+                </div>
+              ) : signer ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Check className="h-5 w-5" />
+                    <span>Wallet connected</span>
+                  </div>
+                  
+                  {ckbAddress && (
+                    <div className="rounded-lg bg-muted p-4 space-y-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Address</Label>
+                        <div className="text-sm break-all font-mono">
+                          {ckbAddress.slice(0, 20)}...{ckbAddress.slice(-8)}
+                        </div>
+                      </div>
+                      {balance && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Balance</Label>
+                          <div className="text-lg font-semibold">{balance} CKB</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span>Wallet connected</span>
                 </div>
               )}
               
@@ -312,9 +347,21 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
               )}
             </CardContent>
             <CardFooter className="flex justify-between">
-              <div />
-              <Button onClick={handleConnectWallet} disabled={isLoading || !!wallet}>
-                {wallet ? 'Connected' : 'Connect Wallet'}
+              {!wallet ? (
+                <div />
+              ) : (
+                <Button variant="outline" onClick={open}>
+                  Wallet Settings
+                </Button>
+              )}
+              <Button 
+                onClick={wallet ? handleCheckDidAndContinue : handleConnectWallet} 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {wallet ? 'Continue' : 'Connect Wallet'}
               </Button>
             </CardFooter>
           </Card>
