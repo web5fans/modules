@@ -8,6 +8,7 @@ export const DEFAULT_WHITELIST = [
   'http://localhost:3004', // Daoworld App dev
   'http://localhost:3001', // Keystore App itself dev
   'https://console.web5.fans', // Console App
+  'https://me.web5.fans', // Daoworld App
   'https://keystore.web5.fans', // Keystore App
   'https://www.bbsfans.dev', // bbsfans.dev
   'https://www.ccfdao.dev', // ccfdao.dev
