@@ -20,6 +20,7 @@ interface UserContextType {
 }
 
 const USER_STORAGE_KEY = 'daoworld_user';
+const USER_CCC_KEY = 'ccc-connection-info';
 
 const UserContext = createContext<UserContextType | null>(null);
 
@@ -55,6 +56,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(USER_CCC_KEY);
   };
 
   const updateUser = (updates: Partial<UserData>) => {
