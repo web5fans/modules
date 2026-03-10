@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Globe, MessageSquare, Image, Music, FileText, Gamepad2, ShoppingBag, Video } from 'lucide-react';
+import { Globe, MessageSquare, Wallet, SquareChevronRight, FileText } from 'lucide-react';
 
 interface Web5App {
   id: string;
@@ -14,75 +14,48 @@ interface Web5App {
 
 const WEB5_APPS: Web5App[] = [
   {
-    id: 'bbs',
-    name: 'Web5 BBS',
-    description: 'Decentralized forum and discussion platform',
+    id: 'BBS',
+    name: 'Web5 BBS(dev)',
+    description: 'Forum and discussion platform',
     icon: <MessageSquare className="h-8 w-8" />,
-    url: 'https://web5.bbsfans.dev',
+    url: 'https://bbsfans.dev',
     category: 'Social',
     status: 'live'
   },
   {
-    id: 'docs',
-    name: 'Web5 Docs',
-    description: 'Documentation and guides for Web5 developers',
-    icon: <FileText className="h-8 w-8" />,
-    url: 'https://docs.web5.fans',
-    category: 'Developer',
+    id: 'DAO',
+    name: 'CKB Community Found DAO 1.1(dev)',
+    description: 'To support community members in buiding and exploring the ckb ecosystem',
+    icon: <Globe className="h-8 w-8" />,
+    url: 'https://ccfdao.dev',
+    category: 'Community',
     status: 'live'
   },
   {
-    id: 'gallery',
-    name: 'Web5 Gallery',
-    description: 'Decentralized image sharing and storage',
-    icon: <Image className="h-8 w-8" />,
-    url: '#',
-    category: 'Media',
-    status: 'coming-soon'
-  },
-  {
-    id: 'music',
-    name: 'Web5 Music',
-    description: 'Own your music. Decentralized streaming platform',
-    icon: <Music className="h-8 w-8" />,
-    url: '#',
-    category: 'Entertainment',
-    status: 'beta'
-  },
-  {
-    id: 'video',
-    name: 'Web5 Video',
-    description: 'Decentralized video sharing platform',
-    icon: <Video className="h-8 w-8" />,
-    url: '#',
-    category: 'Entertainment',
-    status: 'coming-soon'
-  },
-  {
-    id: 'market',
-    name: 'Web5 Market',
-    description: 'Decentralized marketplace for digital goods',
-    icon: <ShoppingBag className="h-8 w-8" />,
-    url: '#',
-    category: 'Commerce',
-    status: 'beta'
-  },
-  {
-    id: 'games',
-    name: 'Web5 Games',
-    description: 'Blockchain gaming platform',
-    icon: <Gamepad2 className="h-8 w-8" />,
-    url: '#',
-    category: 'Gaming',
-    status: 'coming-soon'
-  },
-  {
-    id: 'explorer',
-    name: 'Web5 Explorer',
-    description: 'Explore the Web5 ecosystem',
-    icon: <Globe className="h-8 w-8" />,
-    url: 'https://web5.fans',
+    id: 'Keystore',
+    name: 'Web5 Keystore',
+    description: 'A simple web wallet to manager sign key',
+    icon: <Wallet className="h-8 w-8" />,
+    url: 'https://keystore.web5.fans',
     category: 'Tools',
+    status: 'beta'
+  },
+  {
+    id: 'Console',
+    name: 'Web5 Console',
+    description: 'A full Web5 demo app that composes all basic modules of web5.',
+    icon: <SquareChevronRight className="h-8 w-8" />,
+    url: 'https://console.web5.fans',
+    category: 'Tools',
+    status: 'beta'
+  },
+  {
+    id: 'HomePage',
+    name: 'Web5fans Official Website',
+    description: 'Web5fans Official Website and document of Web5',
+    icon: <FileText className="h-8 w-8" />,
+    url: 'https://www.web5.fans',
+    category: 'Document',
     status: 'live'
   }
 ];
