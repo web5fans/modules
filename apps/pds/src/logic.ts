@@ -1,4 +1,5 @@
 import { AtpAgent, FansWeb5CkbIndexAction} from "web5-api";
+export { AtpAgent } from "web5-api";
 import type { UnsignedCommit } from "@atproto/repo";
 import { CID } from "multiformats";
 import { TID } from '@atproto/common-web'

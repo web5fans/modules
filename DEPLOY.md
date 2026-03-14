@@ -9,9 +9,10 @@ We recommend deploying each app as a separate project in Vercel.
 | App | Path | Recommended Domain | Environment Variables |
 | :--- | :--- | :--- | :--- |
 | **Keystore** | `apps/keystore` | `keystore.web5.fans` | `VITE_KEYSTORE_URL` |
-| **Console** | `apps/console` | `console.web5.fans` | `DID_MODULE_URL`, `PDS_MODULE_URL`, `KEYSTORE_MODULE_URL` |
+| **Console** | `apps/console` | `console.web5.fans` | `VITE_DID_MODULE_URL`, `VITE_PDS_MODULE_URL`, `VITE_KEYSTORE_MODULE_URL` |
 | **DID Module** | `apps/did` | `did-module.web5.fans` | None |
 | **PDS Module** | `apps/pds` | `pds-module.web5.fans` | None |
+| **Porta;** | `apps/portal` | `me.web5.fans` | `VITE_DID_MODULE_URL`, `VITE_PDS_MODULE_URL`, `VITE_KEYSTORE_MODULE_URL` |
 
 ## 2. Deployment Steps
 
@@ -56,7 +57,7 @@ Since Console depends on these, deploy them first.
 ### Step 4: Deploy Console
 
 1.  **Import Project** -> Root Directory: `apps/console`.
-2.  **Project Name**: `modules-console` (or similar).
+2.  **Project Name**: `modules-console`.
 3.  **Build Command**: `cd ../.. && npx turbo run build --filter=@web5-modules/console` (or rely on default if Vercel detects it correctly).
 4.  **Install Command**: `npm install`
 5. **Environment Variables**:
@@ -65,6 +66,19 @@ Since Console depends on these, deploy them first.
     *   `VITE_KEYSTORE_MODULE_URL`: `https://keystore.web5.fans/assets/remoteEntry.js`
 6.  **Deploy**.
 7.  **Assign Domain**: Go to Settings -> Domains and assign `console.web5.fans`.
+
+### Step 5: Deploy Portal
+
+1.  **Import Project** -> Root Directory: `apps/portal`.
+2.  **Project Name**: `modules-portal`.
+3.  **Build Command**: `cd ../.. && npx turbo run build --filter=@web5-modules/portal` (or rely on default if Vercel detects it correctly).
+4.  **Install Command**: `npm install`
+5. **Environment Variables**:
+    *   `VITE_DID_MODULE_URL`: `https://did-module.web5.fans/assets/remoteEntry.js`
+    *   `VITE_PDS_MODULE_URL`: `https://pds-module.web5.fans/assets/remoteEntry.js`
+    *   `VITE_KEYSTORE_MODULE_URL`: `https://keystore.web5.fans/assets/remoteEntry.js`
+6.  **Deploy**.
+7.  **Assign Domain**: Go to Settings -> Domains and assign `me.web5.fans`.
 
 ## 3. Preview Deployments (Bugfix / Feature Branches)
 
