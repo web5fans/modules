@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { useKeystore } from '@/contexts/KeystoreContext';
+import { KEY_STORE_URL } from 'keystore/constants';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -39,19 +40,23 @@ export function Layout() {
               <Globe className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">DAO World</h1>
-              <p className="text-xs text-muted-foreground">Web5 User Portal</p>
+              <h1 className="font-bold text-lg">Web5 User Portal</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <Badge 
-              variant={connected ? "default" : "destructive"}
-              className="hidden sm:flex items-center gap-1"
+            <a
+              href={KEY_STORE_URL}
+              target="_blank"
             >
-              {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {connected ? 'Connected' : 'Offline'}
-            </Badge>
+              <Badge 
+                variant={connected ? "default" : "destructive"}
+                className="hidden sm:flex items-center gap-1"
+              >
+                {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                {connected ? 'Connected' : 'Offline'}
+              </Badge>
+            </a>
 
             {user && (
               <div className="flex items-center gap-3">

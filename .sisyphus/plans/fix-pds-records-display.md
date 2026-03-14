@@ -68,7 +68,7 @@ Replace lines 244-272 with corrected display logic that:
 - Verify empty collections show appropriate message
 
 ## Files to Change
-- `apps/daoworld/src/components/UserSettings.tsx` (lines 244-272)
+- `apps/portal/src/components/UserSettings.tsx` (lines 244-272)
 
 ## Effort
 Quick fix - ~5 minutes

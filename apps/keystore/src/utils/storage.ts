@@ -5,10 +5,10 @@ export const STORAGE_KEY_WHITELIST = 'web5_keystore_origin_whitelist';
 
 export const DEFAULT_WHITELIST = [
   'http://localhost:3000', // Console App dev
-  'http://localhost:3004', // Daoworld App dev
+  'http://localhost:3004', // Portal App dev
   'http://localhost:3001', // Keystore App itself dev
   'https://console.web5.fans', // Console App
-  'https://me.web5.fans', // Daoworld App
+  'https://me.web5.fans', // Portal App
   'https://keystore.web5.fans', // Keystore App
   'https://www.bbsfans.dev', // bbsfans.dev
   'https://www.ccfdao.dev', // ccfdao.dev

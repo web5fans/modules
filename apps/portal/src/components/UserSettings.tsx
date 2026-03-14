@@ -590,7 +590,7 @@ export function UserSettings() {
             <CardHeader>
               <CardTitle className="text-destructive">Logout</CardTitle>
               <CardDescription>
-                Sign out from DAO World. Your data remains on the PDS.
+                Sign out from Web5 User Portal. Your data remains on the PDS.
               </CardDescription>
             </CardHeader>
             <CardContent>

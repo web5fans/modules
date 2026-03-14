@@ -1,4 +1,4 @@
-# DAO World
+# Portal
 
 Web5 User Portal - A user-friendly entry point to the Web5 ecosystem.
 

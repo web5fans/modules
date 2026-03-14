@@ -20,7 +20,7 @@ const PdsContext = createContext<PdsContextType | null>(null);
 
 export function PdsProvider({ children }: { children: ReactNode }) {
   const [pdsUrl, setPdsUrl] = useState<string>(() => {
-    return localStorage.getItem('daoworld_pds_url') || AVAILABLE_PDS[0];
+    return localStorage.getItem('portal_pds_url') || AVAILABLE_PDS[0];
   });
 
   const [username, setUsernameState] = useState<string>('');
@@ -60,7 +60,7 @@ export function PdsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('daoworld_pds_url', pdsUrl);
+    localStorage.setItem('portal_pds_url', pdsUrl);
   }, [pdsUrl]);
 
   useEffect(() => {

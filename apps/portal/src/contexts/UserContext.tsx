@@ -19,7 +19,7 @@ interface UserContextType {
   updateUser: (updates: Partial<UserData>) => void;
 }
 
-const USER_STORAGE_KEY = 'daoworld_user';
+const USER_STORAGE_KEY = 'portal_user';
 const USER_CCC_KEY = 'ccc-connection-info';
 
 const UserContext = createContext<UserContextType | null>(null);

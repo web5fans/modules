@@ -1,8 +1,8 @@
-# daoworld App Implementation Plan
+# Portal App Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Build daoworld - a user-friendly Web5 entry point app with shadcn/ui, featuring 6-step user registration, Web5 Apps directory, and user settings with CKB wallet integration.
+**Goal:** Build portal - a user-friendly Web5 entry point app with shadcn/ui, featuring 6-step user registration, Web5 Apps directory, and user settings with CKB wallet integration.
 
 **Architecture:** Host app consuming keystore/did/pds remote modules via Module Federation, using React Router for navigation, contexts for state management, and localStorage for session persistence.
 
@@ -12,7 +12,7 @@
 
 ## Executive Summary
 
-This plan creates a new `apps/daoworld` application as a user-friendly Web5 entry point. The app integrates with existing remote modules (keystore, did, pds) via Module Federation and provides:
+This plan creates a new `apps/portal` application as a user-friendly Web5 entry point. The app integrates with existing remote modules (keystore, did, pds) via Module Federation and provides:
 
 1. **Registration Flow (6 steps)**: Create key → Select PDS → Choose username → Connect CKB wallet → On-chain transaction → PDS registration
 2. **Web5 Apps Page**: App Store-like grid of available Web5 applications
@@ -27,7 +27,7 @@ This plan creates a new `apps/daoworld` application as a user-friendly Web5 entr
 ## Directory Structure
 
 ```
-apps/daoworld/
+apps/portal/
 ├── index.html                 # Entry HTML
 ├── package.json              # Dependencies and scripts
 ├── tsconfig.json             # Composite project config
@@ -44,7 +44,7 @@ apps/daoworld/
 │   ├── components/
 │   │   └── ui/               # shadcn/ui components
 │   ├── contexts/
-│   │   ├── DaoworldContext.tsx    # Main app state
+│   │   ├── PortalContext.tsx    # Main app state
 │   │   └── RegistrationContext.tsx # Registration wizard state
 │   ├── hooks/
 │   │   ├── useKeystore.ts    # Keystore integration
@@ -81,21 +81,21 @@ apps/daoworld/
 ### Task 1.1: Create App Directory Structure
 
 **Files:**
-- Create: `apps/daoworld/index.html`
-- Create: `apps/daoworld/package.json`
-- Create: `apps/daoworld/tsconfig.json`
-- Create: `apps/daoworld/tsconfig.app.json`
-- Create: `apps/daoworld/tsconfig.node.json`
-- Create: `apps/daoworld/vite.config.ts`
-- Create: `apps/daoworld/eslint.config.js`
-- Create: `apps/daoworld/src/main.tsx`
-- Create: `apps/daoworld/src/index.css`
+- Create: `apps/portal/index.html`
+- Create: `apps/portal/package.json`
+- Create: `apps/portal/tsconfig.json`
+- Create: `apps/portal/tsconfig.app.json`
+- Create: `apps/portal/tsconfig.node.json`
+- Create: `apps/portal/vite.config.ts`
+- Create: `apps/portal/eslint.config.js`
+- Create: `apps/portal/src/main.tsx`
+- Create: `apps/portal/src/index.css`
 
 **Step 1: Create directory structure**
 
 ```bash
-mkdir -p apps/daoworld/src/{components/ui,contexts,hooks,pages/registration,services,lib}
-mkdir -p apps/daoworld/public
+mkdir -p apps/portal/src/{components/ui,contexts,hooks,pages/registration,services,lib}
+mkdir -p apps/portal/public
 ```
 
 **Step 2: Create index.html**
@@ -107,7 +107,7 @@ mkdir -p apps/daoworld/public
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>daoworld - Web5 User Portal</title>
+    <title>portal - Web5 User Portal</title>
   </head>
   <body>
     <div id="root"></div>
@@ -120,7 +120,7 @@ mkdir -p apps/daoworld/public
 
 ```json
 {
-  "name": "@web5-modules/daoworld",
+  "name": "@web5-modules/portal",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -170,7 +170,7 @@ mkdir -p apps/daoworld/public
 
 ```bash
 git add .
-git commit -m "chore: bootstrap daoworld app with base configuration"
+git commit -m "chore: bootstrap portal app with base configuration"
 ```
 
 ---
@@ -178,8 +178,8 @@ git commit -m "chore: bootstrap daoworld app with base configuration"
 ### Task 1.2: Initialize shadcn/ui
 
 **Files:**
-- Create: `apps/daoworld/components.json`
-- Create: `apps/daoworld/src/lib/utils.ts`
+- Create: `apps/portal/components.json`
+- Create: `apps/portal/src/lib/utils.ts`
 - Install: shadcn/ui components
 
 **Step 1: Create components.json**
@@ -211,7 +211,7 @@ git commit -m "chore: bootstrap daoworld app with base configuration"
 **Step 2: Install components**
 
 ```bash
-cd apps/daoworld
+cd apps/portal
 pnpm dlx shadcn@latest add button card tabs input select dialog badge progress separator skeleton
 ```
 
@@ -227,9 +227,9 @@ git commit -m "chore: initialize shadcn/ui with required components"
 ### Task 1.3: Create Module Federation Type Declarations
 
 **Files:**
-- Create: `apps/daoworld/src/remotes.d.ts`
+- Create: `apps/portal/src/remotes.d.ts`
 
-Copy type declarations from `apps/console/src/remotes.d.ts` and adapt for daoworld.
+Copy type declarations from `apps/console/src/remotes.d.ts` and adapt for portal.
 
 **Step 1: Commit**
 
@@ -248,7 +248,7 @@ git commit -m "chore: add Module Federation type declarations"
 ### Task 2.1: Create Storage Service
 
 **Files:**
-- Create: `apps/daoworld/src/services/storage.ts`
+- Create: `apps/portal/src/services/storage.ts`
 
 ```typescript
 export interface UserSession {
@@ -262,7 +262,7 @@ export interface UserSession {
   refreshJwt?: string
 }
 
-const STORAGE_KEY = 'daoworld_session'
+const STORAGE_KEY = 'portal_session'
 
 export const storage = {
   saveSession(session: UserSession): void {
@@ -301,7 +301,7 @@ export const storage = {
 ### Task 2.2: Create Validation Utilities
 
 **Files:**
-- Create: `apps/daoworld/src/services/validation.ts`
+- Create: `apps/portal/src/services/validation.ts`
 
 ```typescript
 export const validation = {
@@ -342,12 +342,12 @@ export const validation = {
 ### Task 2.3: Create Custom Hooks
 
 **Files:**
-- Create: `apps/daoworld/src/hooks/useKeystore.ts`
-- Create: `apps/daoworld/src/hooks/useDid.ts`
-- Create: `apps/daoworld/src/hooks/usePds.ts`
-- Create: `apps/daoworld/src/hooks/useCkbWallet.ts`
+- Create: `apps/portal/src/hooks/useKeystore.ts`
+- Create: `apps/portal/src/hooks/useDid.ts`
+- Create: `apps/portal/src/hooks/usePds.ts`
+- Create: `apps/portal/src/hooks/useCkbWallet.ts`
 
-Each hook follows the pattern from console app but adapted for daoworld.
+Each hook follows the pattern from console app but adapted for portal.
 
 ---
 
@@ -356,17 +356,17 @@ Each hook follows the pattern from console app but adapted for daoworld.
 **Parallelism:** Tasks can run in parallel  
 **Dependencies:** Wave 2 complete
 
-### Task 3.1: Create DaoworldContext
+### Task 3.1: Create PortalContext
 
 **Files:**
-- Create: `apps/daoworld/src/contexts/DaoworldContext.tsx`
+- Create: `apps/portal/src/contexts/PortalContext.tsx`
 
 Manages authentication state and session persistence.
 
 ### Task 3.2: Create RegistrationContext
 
 **Files:**
-- Create: `apps/daoworld/src/contexts/RegistrationContext.tsx`
+- Create: `apps/portal/src/contexts/RegistrationContext.tsx`
 
 Manages registration wizard state across 6 steps.
 
@@ -380,7 +380,7 @@ Manages registration wizard state across 6 steps.
 ### Task 4.1: RegistrationWizard Container
 
 **Files:**
-- Create: `apps/daoworld/src/pages/registration/RegistrationWizard.tsx`
+- Create: `apps/portal/src/pages/registration/RegistrationWizard.tsx`
 
 Container with progress bar and step routing.
 
@@ -404,21 +404,21 @@ Container with progress bar and step routing.
 ### Task 5.1: Layout Component
 
 **Files:**
-- Create: `apps/daoworld/src/pages/Layout.tsx`
+- Create: `apps/portal/src/pages/Layout.tsx`
 
 Navigation with "Web5 Apps" and "User Settings" tabs.
 
 ### Task 5.2: Web5AppsPage
 
 **Files:**
-- Create: `apps/daoworld/src/pages/Web5AppsPage.tsx`
+- Create: `apps/portal/src/pages/Web5AppsPage.tsx`
 
 App Store-like grid with placeholder Web5 apps.
 
 ### Task 5.3: UserSettingsPage
 
 **Files:**
-- Create: `apps/daoworld/src/pages/UserSettingsPage.tsx`
+- Create: `apps/portal/src/pages/UserSettingsPage.tsx`
 
 Two-tab interface: User Data and Management.
 
@@ -432,14 +432,14 @@ Two-tab interface: User Data and Management.
 ### Task 6.1: Create App.tsx Router
 
 **Files:**
-- Create: `apps/daoworld/src/App.tsx`
+- Create: `apps/portal/src/App.tsx`
 
 React Router setup with authentication flow.
 
 ### Task 6.2: Update Root Configuration
 
 **Files:**
-- Modify: `package.json` - add daoworld scripts
+- Modify: `package.json` - add portal scripts
 - Modify: `turbo.json` - if needed
 
 ### Task 6.3: Install Dependencies & Build
@@ -453,7 +453,7 @@ pnpm install
 **Step 2:** Build to verify
 
 ```bash
-pnpm --filter @web5-modules/daoworld build
+pnpm --filter @web5-modules/portal build
 ```
 
 ---
@@ -463,7 +463,7 @@ pnpm --filter @web5-modules/daoworld build
 ### Task 7.1: Run ESLint
 
 ```bash
-cd apps/daoworld
+cd apps/portal
 pnpm lint
 ```
 

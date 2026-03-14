@@ -9,7 +9,7 @@
     "dev:keystore": "pnpm --filter @web5-modules/keystore dev",
     "dev:did": "pnpm --filter @web5-modules/did dev",
     "dev:pds": "pnpm --filter @web5-modules/pds dev",
-    "dev:daoworld": "pnpm --filter @web5-modules/daoworld dev",
+    "dev:portal": "pnpm --filter @web5-modules/portal dev",
     "preview": "turbo run preview --parallel"
   },
   "devDependencies": {

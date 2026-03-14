@@ -90,7 +90,7 @@ interface UserData {
 - Update progress calculations
 
 ## Files to Modify
-- `/home/rink/work/github/web5fans/modules/apps/daoworld/src/components/RegistrationWizard.tsx`
+- `/home/rink/work/github/web5fans/modules/apps/portal/src/components/RegistrationWizard.tsx`
 
 ## Testing Checklist
 - [ ] Connect wallet without DID → goes to registration flow

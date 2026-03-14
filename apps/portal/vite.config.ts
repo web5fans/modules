@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       federation({
-        name: 'daoworld_host',
+        name: 'portal_host',
         remotes: {
           did_module: DID_MODULE_URL,
           pds_module: PDS_MODULE_URL,

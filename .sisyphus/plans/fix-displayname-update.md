@@ -122,7 +122,7 @@ The function no longer needs `signer` from ccc, so update the guard condition:
 - Verify proper error handling
 
 ## Files to Change
-- `apps/daoworld/src/components/UserSettings.tsx` (lines 128-154, plus add helper function)
+- `apps/portal/src/components/UserSettings.tsx` (lines 128-154, plus add helper function)
 
 ## Effort
 Medium fix - ~15 minutes (requires understanding PDS record structure)
