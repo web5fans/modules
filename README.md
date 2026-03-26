@@ -23,18 +23,28 @@ This project extracts common Web5 capabilities — key management, DID operation
 ├────────────┬───────────────┬────────────────────┤
 │ DID Module │  PDS Module   │  Keystore Module   │
 │   (:3002)  │   (:3003)     │     (:3001)        │
-│  remote    │  remote       │  remote + iframe   │
+│   remote   │  remote       │  remote + tab      │
 └────────────┴───────┬───────┴─────────┬──────────┘
                      │                 │
               ┌──────┴──────┐   ┌──────┴──────┐
-              │  web5-api   │   │ postMessage  │
-              │  (ATProto)  │   │   bridge     │
+              │  web5-api   │   │ postMessage │
+              │  (ATProto)  │   │  new tab    │
               └─────────────┘   └─────────────┘
 ```
 
 - **Module Federation**: Each module exposes federated entries (`remoteEntry.js`). The host loads them at runtime — no build-time coupling.
-- **iframe Bridge**: Keystore runs in an isolated iframe. The host communicates with it via `postMessage`, keeping private keys sandboxed in the keystore's origin.
+- **Keystore Communication**: Keystore opens in a new tab due to browser Storage Partitioning restrictions. The host communicates with it via `postMessage`, keeping private keys sandboxed in the keystore's origin.
 - **Shared Libraries**: `@ckb-ccc/ccc` and `web5-api` are declared as shared singletons to avoid duplication.
+
+### Communication Approach
+
+> **Note on Browser Storage Partitioning**: Modern browsers (Chrome, Safari, Firefox) partition `localStorage` by top-level origin. This means an iframe cannot access the same localStorage as its parent if they have different origins. To work around this, Keystore opens in a new tab and communicates via `postMessage`.
+
+**Why not iframe?**
+- ❌ iframe + postMessage: Blocked by Storage Partitioning — iframe cannot access shared localStorage
+- ❌ Popup window: Browser blocks popups; window cannot be reliably reused
+- ❌ Shared window: `window.open(name)` doesn't work across different URLs
+- ✅ **New tab**: Reliable, user-friendly, allows full keystore UI
 
 ### Modules
 
@@ -44,9 +54,16 @@ Manages Secp256k1 signing keys (generate, import, sign, verify). Analogous to a 
 
 | Component | What it does |
 |-----------|-------------|
-| **Web UI** (`index.html`) | Visual key manager: create/import keypairs, view active key, manage origin whitelist |
-| **Bridge** (`bridge.html`) | Headless iframe; handles `postMessage` requests (`getDIDKey`, `signMessage`, `verifySignature`) from whitelisted origins |
-| **KeystoreClient** (federated) | TypeScript client that other modules import to talk to the bridge iframe |
+| **Web UI** (`index.html`) | Full-featured key manager: create/import keypairs, view active key, manage origin whitelist |
+| **KeystoreClient** (federated) | TypeScript client that other modules import to talk to the keystore tab via `postMessage` |
+
+**Communication Flow**:
+1. Host app calls `new KeystoreClient()`
+2. Client opens keystore in new tab via `window.open(keystoreUrl, '_blank')`
+3. Keystore tab loads and sends `ready` message
+4. Host sends operation request via `postMessage`
+5. Keystore processes (accesses localStorage) and responds
+6. Focus returns to host app
 
 **Crypto stack**: `@atproto/crypto` (Secp256k1Keypair), AES-GCM encryption for key export, PBKDF2 key derivation.
 
@@ -84,7 +101,7 @@ Pure-logic module (no UI) for ATProto PDS operations. Depends on the keystore re
 A full Web5 demo app that composes all three modules above. It has no business logic of its own — it exists to demonstrate module integration.
 
 | Route | What it shows |
-|-------|-------------|
+|-------|--------------|
 | `/` | Redirects to keys page |
 | `/keys` | Key management - sign message and verify signature by keypairs via keystore |
 | `/dids` | DID management - create/list/destory/transfer/update DID cells on CKB blockchain |
@@ -136,15 +153,17 @@ pnpm build && \
 
 | Module | How to contribute |
 |--------|-------------------|
-| **keystore** | UI changes go in `apps/keystore/src/` (React components). Bridge protocol changes require updating both `bridge.ts` and `KeystoreClient.ts`. Crypto functions are in `crypto.ts`. Test signing flows by running console + keystore together. |
+| **keystore** | UI changes go in `apps/keystore/src/` (React components). Communication protocol changes require updating both `useClientConnection.ts` (keystore side) and `KeystoreClient.ts` (client side). Crypto functions are in `crypto.ts`. Test signing flows by running console + keystore together. |
 | **did** | All logic is in `apps/did/src/logic.ts`. CKB transaction building uses `@ckb-ccc/ccc`. You need a CKB testnet wallet (via CCC connector) to test. |
-| **pds** | Logic is split across `account.ts`, `records.ts`, `repo.ts`, `utils.ts` in `apps/pds/src/`. PDS operations require a running PDS instance (defaults listed in `constants.ts`). Changes to signing flow must stay compatible with keystore's bridge protocol. |
+| **pds** | Logic is split across `apps/pds/src/` under `account.ts`, `records.ts`, `repo.ts`, `utils.ts`. PDS operations require a running PDS instance (defaults listed in `constants.ts`). Changes to signing flow must stay compatible with keystore's postMessage protocol. |
 | **console** | Routes are in `apps/console/src/pages/`. Federated module types are declared in `remotes.d.ts`. When adding a new remote function, update both the type declaration and the corresponding module's `vite.config.ts` exposes. |
-| **utils** | Add new utilities in `packages/utils/src/`. Export them from `index.ts`. No build step — consumers import source directly. |
 
 #### Environment Variables
 
-Remote URLs default to localhost but can be overridden via environment variables in each app's Vite config (e.g., `VITE_KEY_STORE_URL`, `VITE_DID_MODULE_URL`, `VITE_PDS_MODULE_URL`).
+Remote URLs default to localhost but can be overridden via environment variables in each app's Vite config:
+- `VITE_KEYSTORE_URL` - Keystore app URL (default: `http://localhost:3001`)
+- `VITE_DID_MODULE_URL` - DID module remote entry URL
+- `VITE_PDS_MODULE_URL` - PDS module remote entry URL
 
 ---
 
@@ -167,18 +186,28 @@ Web5 Modules 是一个单仓库（monorepo）项目，提供构建 Web5 应用�
 ├────────────┬───────────────┬────────────────────┤
 │  DID 模块   │   PDS 模块    │   Keystore 模块     │
 │  (:3002)   │   (:3003)     │     (:3001)        │
-│   远程模块  │   远程模块     │  远程模块 + iframe   │
+│   远程模块  │   远程模块     │  远程模块 + 新标签页   │
 └────────────┴───────┬───────┴─────────┬──────────┘
                      │                 │
               ┌──────┴──────┐   ┌──────┴──────┐
               │  web5-api   │   │ postMessage │
-              │  (ATProto)  │   │    桥接      │
+              │  (ATProto)  │   │   新标签页   │
               └─────────────┘   └─────────────┘
 ```
 
 - **Module Federation**：每个模块暴露联邦入口（`remoteEntry.js`），Web5 应用在运行时加载，无需构建时耦合。
-- **iframe 桥接**：Keystore 运行在隔离的 iframe 中，宿主通过 `postMessage` 与之通信，私钥始终沙箱化在 keystore 的源中。
+- **Keystore 通信**：由于浏览器 Storage Partitioning 限制，Keystore 在新标签页中打开。宿主通过 `postMessage` 与之通信，私钥始终沙箱化在 keystore 的源中。
 - **共享库**：`@ckb-ccc/ccc` 和 `web5-api` 声明为共享单例，避免重复加载。
+
+### 通信方案说明
+
+> **关于浏览器 Storage Partitioning**：现代浏览器（Chrome、Safari、Firefox）按顶级来源分区 `localStorage`。这意味着如果 iframe 与父页面不同源，iframe 无法访问与父页面共享的 localStorage。为了解决这个问题，Keystore 在新标签页中打开并通过 `postMessage` 通信。
+
+**为什么不使用 iframe？**
+- ❌ iframe + postMessage：被 Storage Partitioning 阻止 — iframe 无法访问共享的 localStorage
+- ❌ Popup 窗口：浏览器会拦截弹窗；窗口无法可靠复用
+- ❌ 共享窗口：`window.open(name)` 在不同 URL 下不起作用
+- ✅ **新标签页**：可靠、用户友好、允许完整的 keystore UI
 
 ### 模块说明
 
@@ -188,9 +217,16 @@ Web5 Modules 是一个单仓库（monorepo）项目，提供构建 Web5 应用�
 
 | 组件 | 功能 |
 |------|------|
-| **Web UI**（`index.html`） | 可视化密钥管理器：创建/导入密钥对、查看活跃密钥、管理来源白名单 |
-| **桥接**（`bridge.html`） | 无界面 iframe；处理来自白名单来源的 `postMessage` 请求（`getDIDKey`、`signMessage`、`verifySignature`） |
-| **KeystoreClient**（联邦导出） | TypeScript 客户端，其他模块导入后可通过它与桥接 iframe 通信 |
+| **Web UI**（`index.html`） | 全功能密钥管理器：创建/导入密钥对、查看活跃密钥、管理来源白名单 |
+| **KeystoreClient**（联邦导出） | TypeScript 客户端，其他模块导入后可通过 `postMessage` 与 keystore 标签页通信 |
+
+**通信流程**：
+1. 宿主应用调用 `new KeystoreClient()`
+2. 客户端通过 `window.open(keystoreUrl, '_blank')` 在新标签页打开 keystore
+3. Keystore 标签页加载完成并发送 `ready` 消息
+4. 宿主通过 `postMessage` 发送操作请求
+5. Keystore 处理（访问 localStorage）并响应
+6. 焦点返回宿主应用
 
 **加密栈**：`@atproto/crypto`（Secp256k1Keypair）、AES-GCM 加密导出、PBKDF2 密钥派生。
 
@@ -236,7 +272,7 @@ Web5 Modules 是一个单仓库（monorepo）项目，提供构建 Web5 应用�
 | `/browser` | PDS 浏览器 - 浏览任意 PDS 上的仓库和记录 |
 | `/relayer` | 中继 - ATProto 事件流的 firehose 中继 |
 
-**技术栈**：React 19、React Router、`@ckb-ccc/connector-react`
+**技术栈**：React 19、React Router、`@ckb-ccc/connector-react`、Sonner（toast 通知）。
 
 ### 快速开始
 
@@ -280,12 +316,14 @@ pnpm build && \
 
 | 模块 | 如何贡献 |
 |------|---------|
-| **keystore** | UI 修改在 `apps/keystore/src/`（React 组件）。桥接协议变更需同时更新 `bridge.ts` 和 `KeystoreClient.ts`。加密函数在 `crypto.ts`。测试签名流程需同时运行 console 和 keystore。 |
+| **keystore** | UI 修改在 `apps/keystore/src/`（React 组件）。通信协议变更需同时更新 `useClientConnection.ts`（keystore 端）和 `KeystoreClient.ts`（客户端）。加密函数在 `crypto.ts`。测试签名流程需同时运行 console 和 keystore。 |
 | **did** | 所有逻辑在 `apps/did/src/logic.ts`。CKB 交易构建使用 `@ckb-ccc/ccc`。测试需要 CKB 测试网钱包（通过 CCC connector）。 |
-| **pds** | 逻辑分布在 `apps/pds/src/` 下的 `account.ts`、`records.ts`、`repo.ts`、`utils.ts`。PDS 操作需要运行中的 PDS 实例（默认地址见 `constants.ts`）。签名流程的修改必须与 keystore 桥接协议保持兼容。 |
+| **pds** | 逻辑分布在 `apps/pds/src/` 下的 `account.ts`、`records.ts`、`repo.ts`、`utils.ts`。PDS 操作需要运行中的 PDS 实例（默认地址见 `constants.ts`）。签名流程的修改必须与 keystore 的 postMessage 协议保持兼容。 |
 | **console** | 路由在 `apps/console/src/pages/`。联邦模块类型声明在 `remotes.d.ts`。添加新的远程函数时，需同时更新类型声明和对应模块 `vite.config.ts` 中的 exposes 配置。 |
-| **utils** | 在 `packages/utils/src/` 中添加新工具函数，从 `index.ts` 导出。无构建步骤——消费者直接导入源码。 |
 
 #### 环境变量
 
-远程模块 URL 默认指向 localhost，可通过各应用 Vite 配置中的环境变量覆盖（如 `VITE_KEY_STORE_URL`、`VITE_DID_MODULE_URL`、`VITE_PDS_MODULE_URL`）。
+远程模块 URL 默认指向 localhost，可通过各应用 Vite 配置中的环境变量覆盖：
+- `VITE_KEYSTORE_URL` - Keystore 应用 URL（默认：`http://localhost:3001`）
+- `VITE_DID_MODULE_URL` - DID 模块远程入口 URL
+- `VITE_PDS_MODULE_URL` - PDS 模块远程入口 URL

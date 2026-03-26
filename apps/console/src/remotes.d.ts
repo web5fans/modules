@@ -190,7 +190,7 @@ declare module 'keystore/KeystoreClient' {
     }
 
     export class KeystoreClient {
-        constructor(bridgeUrl: string);
+        constructor(keystoreUrl?: string);
         connect(): Promise<void>;
         disconnect(): void;
         ping(): Promise<number>;
@@ -202,7 +202,6 @@ declare module 'keystore/KeystoreClient' {
 
 declare module 'keystore/constants' {
     export const KEY_STORE_URL: string;
-    export const KEY_STORE_BRIDGE_URL: string;
 }
 
 declare module 'pds_module/constants' {

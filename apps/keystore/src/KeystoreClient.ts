@@ -1,3 +1,4 @@
+import { KEY_STORE_URL } from './constants';
 
 export type BridgeRequest = {
   type: string;
@@ -17,142 +18,176 @@ export type BridgeResponse = {
   signature?: Uint8Array;
 }
 
-export class KeystoreClient {
-  private iframe: HTMLIFrameElement | null = null;
-  private bridgeUrl: string;
-  private pendingRequests = new Map<string, { resolve: (val: BridgeResponse) => void; reject: (err: Error) => void }>();
+type PendingRequest = {
+  requestId: string;
+  resolve: (val: BridgeResponse) => void;
+  reject: (err: Error) => void;
+  timeoutId: number;
+};
 
-  constructor(bridgeUrl: string) {
-    if (!bridgeUrl) {
-      throw new Error('Bridge URL is required');
+function bytesToHex(bytes: Uint8Array): string {
+  const hex: string[] = [];
+  for (let i = 0; i < bytes.length; i++) {
+    const current = bytes[i] < 16 ? '0' + bytes[i].toString(16) : bytes[i].toString(16);
+    hex.push(current);
+  }
+  return hex.join('');
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  if (hex.length % 2 !== 0) throw new Error('hex string length must be even');
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+export class KeystoreClient {
+  private keystoreUrl: string;
+  private pendingRequest: PendingRequest | null = null;
+  private isConnected = false;
+  private messageHandler: (event: MessageEvent) => void;
+  private keystoreWindow: Window | null = null;
+
+  constructor(keystoreUrl: string = KEY_STORE_URL) {
+    if (!keystoreUrl) {
+      throw new Error('Keystore URL is required');
     }
-    this.bridgeUrl = bridgeUrl;
+    this.keystoreUrl = keystoreUrl;
+
+    this.messageHandler = this.handleMessage.bind(this);
+    window.addEventListener('message', this.messageHandler);
   }
 
   public connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.iframe) {
+      if (this.isConnected) {
         resolve();
         return;
       }
 
-      this.iframe = document.createElement('iframe');
-      this.iframe.src = this.bridgeUrl;
-      // Use visibility:hidden instead of display:none to ensure loading in all browsers
-      this.iframe.style.position = 'absolute';
-      this.iframe.style.width = '0';
-      this.iframe.style.height = '0';
-      this.iframe.style.border = 'none';
-      this.iframe.style.visibility = 'hidden';
-
-      window.addEventListener('message', this.handleMessage);
-
-      const loadTimeout = setTimeout(() => {
-        reject(new Error('Iframe load timeout (5s)'));
-      }, 5000);
-
-      // Wait for iframe load then PING to confirm ready
-      this.iframe.onload = async () => {
-        clearTimeout(loadTimeout);
-        try {
-          // Give bridge a moment to initialize its listeners
-          await new Promise(r => setTimeout(r, 500));
-          await this.ping();
+      this.sendRequest({ type: 'PING', requestId: crypto.randomUUID() })
+        .then(() => {
+          this.isConnected = true;
           resolve();
-        } catch (e) {
-          // Retry ping once if failed immediately
-          console.warn('[KeystoreClient] First ping failed, retrying...', e);
-          try {
-             await new Promise(r => setTimeout(r, 1000));
-             await this.ping();
-             resolve();
-          } catch (retryErr) {
-             reject(retryErr);
-          }
-        }
-      };
-      
-      this.iframe.onerror = (e) => {
-        clearTimeout(loadTimeout);
-        console.error('[KeystoreClient] Iframe load error', e);
-        reject(new Error('Failed to load bridge iframe'));
-      };
-
-      document.body.appendChild(this.iframe);
+        })
+        .catch(reject);
     });
   }
 
   public disconnect() {
-    if (this.iframe) {
-      document.body.removeChild(this.iframe);
-      this.iframe = null;
-    }
-    window.removeEventListener('message', this.handleMessage);
-    this.pendingRequests.clear();
+    this.pendingRequest = null;
+    this.isConnected = false;
+    window.removeEventListener('message', this.messageHandler);
   }
 
-  private handleMessage = (event: MessageEvent) => {
-    // In production, we should check event.origin matches bridgeUrl's origin
-    // const bridgeOrigin = new URL(this.bridgeUrl).origin;
-    // if (event.origin !== bridgeOrigin) return;
-
+  private handleMessage(event: MessageEvent) {
     const { data } = event;
-    // console.log('[KeystoreClient] Received message:', data);
+    if (!data || typeof data !== 'object') return;
+    if (data.source !== 'keystore-auth') return;
+    if (data.type === 'ready') return;
 
-    if (!data || !data.requestId) return;
+    if (!this.pendingRequest) return;
+    if (data.requestId !== this.pendingRequest.requestId) return;
 
-    const resolver = this.pendingRequests.get(data.requestId);
-    if (resolver) {
-      this.pendingRequests.delete(data.requestId);
-      if (data.ok === false) {
-        resolver.reject(new Error(data.error || 'Unknown bridge error'));
-      } else {
-        resolver.resolve(data);
-      }
-    }
-  };
+    const pending = this.pendingRequest;
+    this.pendingRequest = null;
+    clearTimeout(pending.timeoutId);
 
-  private request<T>(message: BridgeRequest): Promise<T> {
-    if (!this.iframe || !this.iframe.contentWindow) {
-      return Promise.reject(new Error('Bridge not connected'));
-    }
-
-    const requestId = message.requestId;
-
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(requestId, { 
-        resolve: (val: BridgeResponse) => resolve(val as T), 
-        reject 
+    if (data.ok) {
+      pending.resolve({
+        type: data.type || 'response',
+        requestId: data.requestId,
+        ok: true,
+        didKey: data.didKey,
+        verified: data.verified,
+        signature: data.signature ? hexToBytes(data.signature) : undefined,
       });
-      this.iframe!.contentWindow!.postMessage(message, '*'); // targetOrigin should be specific in prod
-      
-      // Timeout after 30s
-      setTimeout(() => {
-        if (this.pendingRequests.has(requestId)) {
-          this.pendingRequests.delete(requestId);
-          reject(new Error(`Request ${message.type} timed out`));
+    } else {
+      pending.reject(new Error(data.error || 'Unknown error'));
+    }
+  }
+
+  private sendRequest(request: BridgeRequest): Promise<BridgeResponse> {
+    return new Promise((resolve, reject) => {
+      if (this.pendingRequest) {
+        reject(new Error('Another request is already pending'));
+        return;
+      }
+
+      const requestId = request.requestId;
+
+      const timeoutId = window.setTimeout(() => {
+        if (this.pendingRequest?.requestId === requestId) {
+          this.pendingRequest = null;
+          reject(new Error(`Request ${request.type} timed out after 30s`));
         }
       }, 30000);
+
+      this.pendingRequest = {
+        requestId,
+        resolve,
+        reject,
+        timeoutId,
+      };
+
+      const origin = window.location.origin;
+
+      const messageData = {
+        source: 'keystore-client',
+        origin,
+        type: request.type,
+        requestId,
+        message: request.message ? bytesToHex(request.message) : undefined,
+        didKey: request.didKey,
+        signature: request.signature ? bytesToHex(request.signature) : undefined,
+      };
+
+      if (this.keystoreWindow && !this.keystoreWindow.closed) {
+        this.keystoreWindow.postMessage(messageData, this.keystoreUrl);
+      } else {
+        this.keystoreWindow = window.open(this.keystoreUrl, '_blank');
+
+        if (!this.keystoreWindow) {
+          this.pendingRequest = null;
+          reject(new Error('Failed to open keystore tab. Please allow popups for this site.'));
+          return;
+        }
+
+        setTimeout(() => {
+          window.focus();
+        }, 100);
+
+        const checkReady = setInterval(() => {
+          if (!this.keystoreWindow || this.keystoreWindow.closed) {
+            clearInterval(checkReady);
+            return;
+          }
+          this.keystoreWindow.postMessage(messageData, this.keystoreUrl);
+        }, 100);
+
+        setTimeout(() => {
+          clearInterval(checkReady);
+        }, 5000);
+      }
     });
   }
 
   public async ping(): Promise<number> {
     const start = performance.now();
-    const res = await this.request<BridgeResponse>({
+    const res = await this.sendRequest({
       type: 'PING',
       requestId: crypto.randomUUID(),
     });
     if (!res.ok) {
       throw new Error('Ping failed');
     }
-    if (res.type !== 'PONG') {
-      throw new Error('Invalid response type for PING');
-    }
     return performance.now() - start;
   }
 
   public async getDIDKey(): Promise<string> {
-    const res = await this.request<BridgeResponse>({
+    const res = await this.sendRequest({
       type: 'getDIDKey',
       requestId: crypto.randomUUID(),
     });
@@ -166,7 +201,7 @@ export class KeystoreClient {
   }
 
   public async signMessage(message: Uint8Array): Promise<Uint8Array> {
-    const res = await this.request<BridgeResponse>({
+    const res = await this.sendRequest({
       type: 'signMessage',
       requestId: crypto.randomUUID(),
       message,
@@ -181,7 +216,7 @@ export class KeystoreClient {
   }
 
   public async verifySignature(didKey: string, message: Uint8Array, signature: Uint8Array): Promise<boolean> {
-    const res = await this.request<BridgeResponse>({
+    const res = await this.sendRequest({
       type: 'verifySignature',
       requestId: crypto.randomUUID(),
       didKey,

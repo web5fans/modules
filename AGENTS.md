@@ -125,8 +125,15 @@ export interface KeystoreContextType {
 
 ### Module Federation
 - Remote modules expose `./logic`, `./constants`, and `./ComponentName`
+- Keystore module exposes `./KeystoreClient` and `./constants`
 - Type declarations go in `src/remotes.d.ts`
 - Always share `@ckb-ccc/ccc` and `web5-api` dependencies
+
+### Keystore Communication
+- Keystore opens in a **new tab** (not iframe) due to browser Storage Partitioning
+- Communication uses `postMessage` with `source: 'keystore-client'` / `source: 'keystore-auth'`
+- Keystore page displays a static warning banner: "Do not close this page while the app is running"
+- Client waits for `ready` message before sending requests
 
 ### ESLint Rules
 - TypeScript strict rules enabled

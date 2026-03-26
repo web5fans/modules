@@ -1,4 +1,4 @@
-import { resolve } from 'node:path'
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
@@ -40,11 +40,5 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-        bridge: resolve(__dirname, 'bridge.html'),
-      },
-    },
   },
 })
