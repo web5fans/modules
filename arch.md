@@ -32,7 +32,6 @@ graph TD
     
     subgraph "Keystore App (Provider)"
         WalletUI[钱包 UI]
-        Bridge[Bridge Iframe]
         Signer[签名器]
     end
     
@@ -49,36 +48,94 @@ graph TD
     Dashboard -->|Import| Logic_DID
     Dashboard -->|Import| Logic_PDS
     
-    ClientSDK -.->|Iframe PostMessage| Bridge
-    Bridge --> Signer
+    ClientSDK -.->|New Tab + PostMessage| WalletUI
+    WalletUI --> Signer
     
     ClientSDK -.->|Load| Remote_Keystore
     Logic_DID -.->|Load| Remote_DID
     Logic_PDS -.->|Load| Remote_PDS
 ```
 
-### 2.2 服务与端口规划
+### 2.2 通信机制演变
+
+#### 方案演进
+
+我们尝试了多种跨窗口通信方案，最终选择了**新标签页 + postMessage**：
+
+| 方案 | 结果 | 问题 |
+|------|------|------|
+| iframe + postMessage | ❌ 失败 | Storage Partitioning 阻止 iframe 访问共享 localStorage |
+| Popup 窗口 | ❌ 放弃 | 浏览器拦截弹窗，窗口无法可靠复用 |
+| window.open(name) 共享窗口 | ❌ 不支持 | 不同 URL 参数导致浏览器无法复用窗口 |
+| 新标签页 + postMessage | ✅ 采用 | 可靠、用户友好、允许完整 UI |
+
+#### 当前方案：新标签页通信
+
+```
+Host App (localhost:3000)
+    │
+    │ window.open('http://localhost:3001', '_blank')
+    ▼
+Keystore Tab (localhost:3001)
+    │
+    │ postMessage({ source: 'keystore-client', ... })
+    ▼
+Keystore 处理请求 → 访问 localStorage → 返回结果
+    │
+    │ postMessage({ source: 'keystore-auth', ... })
+    ▼
+Host App 接收响应
+```
+
+**关键设计决策**：
+- Keystore 以独立标签页运行，拥有自己的 origin 和 localStorage
+- 通过 `postMessage` 进行跨源通信
+- 请求/响应模式：异步、一对一、带超时处理
+- 焦点管理：打开标签页后主动将焦点返回宿主应用
+
+### 2.3 服务与端口规划
 
 | 应用/模块 | 端口 (Local) | 类型 | 说明 |
 | :--- | :--- | :--- | :--- |
 | **Console** | `3000` | **Host App** | 用户入口。集成所有模块。 |
-| **Keystore** | `3001` | **App & Provider** | 提供钱包界面 (Direct/Bridge) 及 Client SDK (Federation)。 |
+| **Keystore** | `3001` | **App & Provider** | 提供钱包界面及 Client SDK (Federation)。 |
 | **DID Module**| `3002` | **Remote Provider** | 纯逻辑模块。提供 CKB DID 相关操作。 |
 | **PDS Module**| `3003` | **Remote Provider** | 纯逻辑模块。提供 AT Protocol/Web5 相关操作。 |
 
 ## 3. 详细模块设计
 
 ### 3.1 Keystore (Wallet)
+
 *   **功能**: 管理 Secp256k1 密钥，提供签名服务。
 *   **Exposes (Module Federation)**:
-    *   `./KeystoreClient`: 提供 `KeystoreClient` 类，封装了与 Bridge 的通信逻辑。
+    *   `./KeystoreClient`: 提供 `KeystoreClient` 类，封装了与新标签页 keystore 的通信逻辑。
     *   `./constants`: 提供 `KEY_STORE_URL` 等配置常量。
 *   **通信机制**:
     *   Host App 实例化 `KeystoreClient`。
-    *   Client 在后台创建一个隐藏的 `iframe` 指向 `Keystore` 的 `bridge.html`。
-    *   通过 `postMessage` 进行安全的跨域通信。
+    *   Client 通过 `window.open()` 在新标签页打开 Keystore。
+    *   通过 `postMessage` 进行安全的跨源通信。
+    *   Keystore 页面顶部显示静态提示，提醒用户不要关闭页面。
+
+**文件结构**:
+```
+apps/keystore/
+├── src/
+│   ├── App.tsx                 # 主 UI，包含静态提示栏
+│   ├── KeystoreClient.ts       # 联邦导出的客户端
+│   ├── constants.ts            # 仅 KEY_STORE_URL
+│   ├── hooks/
+│   │   └── useClientConnection.ts  # postMessage 处理
+│   ├── components/
+│   │   ├── KeyStore.tsx        # 密钥管理 UI
+│   │   ├── Signer.tsx          # 签名 UI
+│   │   └── WhitelistSettings.tsx # 白名单管理
+│   └── utils/
+│       ├── crypto.ts           # 加密函数
+│       └── storage.ts          # localStorage 操作
+```
 
 ### 3.2 DID Module
+
 *   **功能**: 封装 CKB 区块链交互逻辑，实现 DID 的 CRUD 操作。
 *   **Exposes**:
     *   `./logic`: 核心逻辑函数。
@@ -91,6 +148,7 @@ graph TD
     *   `destroyDidCell`: 销毁 DID。
 
 ### 3.3 PDS Module
+
 *   **功能**: 封装 Web5/AtProto 协议交互逻辑，实现去中心化数据存储。
 *   **Exposes**:
     *   `./logic`: 核心逻辑函数。
@@ -139,7 +197,7 @@ export default defineConfig({
 ```typescript
 declare module 'keystore/KeystoreClient' {
     export class KeystoreClient {
-        constructor(bridgeUrl: string);
+        constructor(keystoreUrl?: string);
         connect(): Promise<void>;
         signMessage(message: Uint8Array): Promise<Uint8Array>;
         // ...
@@ -164,9 +222,9 @@ declare module 'pds_module/constants' {
 ```typescript
 // 从远程模块导入
 import { KeystoreClient } from 'keystore/KeystoreClient';
-import { KEY_STORE_BRIDGE_URL } from 'keystore/constants';
+import { KEY_STORE_URL } from 'keystore/constants';
 
-const client = new KeystoreClient(KEY_STORE_BRIDGE_URL);
+const client = new KeystoreClient(KEY_STORE_URL);
 await client.connect();
 const didKey = await client.getDIDKey();
 ```
@@ -207,3 +265,21 @@ web5fans/
 *   **Feature Preview**:
     *   利用 Vercel 的 PR Preview 功能，为 `bugfix/xxx` 分支自动生成临时域名。
     *   开发时可通过 URL 参数或环境变量，让 Host App 指向 Preview 版的 Remote URL。
+
+### 6.3 已知限制
+
+#### 多应用共享 Keystore
+当前方案**不支持**多个应用共享同一个 keystore 标签页：
+- 浏览器 `window.open(name)` 无法可靠复用已存在的标签页
+- 每个应用打开 keystore 时会创建新的标签页
+- 这是浏览器安全设计的限制，非代码问题
+
+**用户影响**：
+- 用户可能同时打开多个 keystore 标签页
+- 每个标签页独立管理自己的 localStorage
+- 建议用户手动关闭不需要的 keystore 标签页
+
+**未来可能的解决方案**：
+- Chrome Extension: 作为跨标签页的密钥管理器
+- Service Worker: 作为中间人协调通信
+- 原生应用: 提供桌面端密钥管理服务

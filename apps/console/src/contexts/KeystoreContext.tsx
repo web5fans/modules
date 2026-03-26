@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { KeystoreClient } from 'keystore/KeystoreClient';
-import { KEY_STORE_BRIDGE_URL } from 'keystore/constants';
+import { KEY_STORE_URL } from 'keystore/constants';
 
 interface KeystoreContextType {
   client: KeystoreClient | null;
@@ -18,7 +18,7 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Initialize client only once
-    const c = new KeystoreClient(KEY_STORE_BRIDGE_URL);
+    const c = new KeystoreClient(KEY_STORE_URL);
     setClient(c);
     console.log('Global Client initialized, connecting...');
 
