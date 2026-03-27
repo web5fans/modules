@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { KeystoreClient } from 'keystore/KeystoreClient';
 import { KEY_STORE_URL } from 'keystore/constants';
 
@@ -6,6 +6,8 @@ interface KeystoreContextType {
   client: KeystoreClient | null;
   connected: boolean;
   didKey: string | null;
+  connect: () => Promise<void>;
+  isConnecting: boolean;
 }
 
 const KeystoreContext = createContext<KeystoreContextType | null>(null);
@@ -14,44 +16,45 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<KeystoreClient | null>(null);
   const [connected, setConnected] = useState(false);
   const [didKey, setDidKey] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     const c = new KeystoreClient(KEY_STORE_URL);
     setClient(c);
 
-    let isMounted = true;
-
-    c.connect()
-      .then(async () => {
-        if (isMounted) {
-          setConnected(true);
-          
-          try {
-            const didKey = await c.getDIDKey();
-            if (isMounted && didKey) {
-              setDidKey(didKey);
-            }
-          } catch (err) {
-            console.log('Failed to fetch DID on connect');
-          }
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          console.log('Connection failed:', err.message);
-        }
-      });
-
     return () => {
-      isMounted = false;
       c.disconnect();
       setConnected(false);
       setDidKey(null);
     };
   }, []);
 
+  const connect = useCallback(async () => {
+    if (!client || isConnecting || connected) return;
+
+    setIsConnecting(true);
+
+    try {
+      await client.connect();
+      setConnected(true);
+
+      try {
+        const did = await client.getDIDKey();
+        if (did) {
+          setDidKey(did);
+        }
+      } catch {
+        console.log('Failed to fetch DID on connect');
+      }
+    } catch (err) {
+      console.error('Failed to connect to Keystore:', err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [client, isConnecting, connected]);
+
   return (
-    <KeystoreContext.Provider value={{ client, connected, didKey }}>
+    <KeystoreContext.Provider value={{ client, connected, didKey, connect, isConnecting }}>
       {children}
     </KeystoreContext.Provider>
   );

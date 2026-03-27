@@ -5,11 +5,11 @@ import { usePds } from './contexts/PdsContext';
 import { Wifi, WifiOff, Key, Wallet, LogOut, Loader, Server } from 'lucide-react';
 import { ccc } from '@ckb-ccc/connector-react';
 import { useState, useEffect } from 'react';
-import { KEY_STORE_URL } from 'keystore/constants';
+
 
 export function Layout() {
   const location = useLocation();
-  const { connected, didKey } = useKeystore();
+  const { connected, didKey, connect, isConnecting } = useKeystore();
   const { pdsUrl, setPdsUrl, availablePds, username, setUsername, resolvedDid, isResolving, isAvailable } = usePds();
   const { wallet, open, disconnect } = ccc.useCcc();
   const signer = ccc.useSigner();
@@ -117,16 +117,17 @@ export function Layout() {
                 <span className="font-mono">{didKey.slice(0, 10)}...{didKey.slice(-4)}</span>
               </div>
             )}
-            <a
-              href={KEY_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={connect}
+              disabled={isConnecting}
               className={`badge ${connected ? 'badge-success' : 'badge-error'} cursor-pointer`}
-              style={{ textDecoration: 'none' }}
+              style={{ textDecoration: 'none', border: 'none', background: 'var(--badge-bg)' }}
+              aria-label={isConnecting ? 'Connecting to Keystore...' : connected ? 'Keystore Connected' : 'Connect to Keystore'}
             >
-              {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-              <span>{connected ? 'Connected' : 'Offline'}</span>
-            </a>
+              {isConnecting ? <Loader size={14} className="spin" /> : connected ? <Wifi size={14} /> : <WifiOff size={14} />}
+              <span>{isConnecting ? 'Connecting...' : connected ? 'Connected' : 'Offline'}</span>
+            </button>
           </div>
 
           {/* PDS Selector */}

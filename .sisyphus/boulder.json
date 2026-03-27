@@ -1,11 +1,10 @@
 {
-  "active_plan": "/home/rink/work/github/web5fans/modules/.sisyphus/plans/fix-pds-records-display.md",
-  "started_at": "2026-03-09T14:42:54.478Z",
+  "active_plan": "/home/rink/work/github/web5fans/modules/.sisyphus/plans/keystore-manual-connect.md",
+  "started_at": "2026-03-27T03:42:00.000Z",
   "session_ids": [
-    "ses_32cf47967ffeb3uuxvnvLHxW0E",
-    "ses_329caadc2ffeUoeEcQV9TLyTF9",
-    "ses_3291982feffeJGQ5ohvXajV4eb"
+    "ses_2d2ac0947ffe5e26iqaUUVEgCw"
   ],
-  "plan_name": "fix-pds-records-display",
-  "worktree_path": "/home/rink/work/github/web5fans/modules"
+  "plan_name": "keystore-manual-connect",
+  "worktree_path": "/home/rink/work/github/web5fans/modules",
+  "task_sessions": {}
 }

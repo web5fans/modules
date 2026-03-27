@@ -1,7 +1,6 @@
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { useKeystore } from '@/contexts/KeystoreContext';
-import { KEY_STORE_URL } from 'keystore/constants';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +11,14 @@ import {
   Wifi, 
   WifiOff,
   LogOut,
-  Globe
+  Globe,
+  Loader
 } from 'lucide-react';
 
 export function Layout() {
   const location = useLocation();
   const { user, isLoggedIn, logout } = useUser();
-  const { connected } = useKeystore();
+  const { connected, connect, isConnecting } = useKeystore();
 
   const navItems = [
     { path: '/apps', label: 'Web5 Apps', icon: LayoutGrid },
@@ -45,18 +45,21 @@ export function Layout() {
           </div>
 
           <div className="flex items-center gap-4">
-            <a
-              href={KEY_STORE_URL}
-              target="_blank"
+            <button
+              type="button"
+              onClick={connect}
+              disabled={isConnecting}
+              className="hidden sm:flex items-center gap-1"
+              aria-label={isConnecting ? 'Connecting to Keystore...' : connected ? 'Keystore Connected' : 'Connect to Keystore'}
             >
               <Badge 
                 variant={connected ? "default" : "destructive"}
-                className="hidden sm:flex items-center gap-1"
+                className="flex items-center gap-1"
               >
-                {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-                {connected ? 'Connected' : 'Offline'}
+                {isConnecting ? <Loader className="h-3 w-3 animate-spin" /> : connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                {isConnecting ? 'Connecting...' : connected ? 'Connected' : 'Offline'}
               </Badge>
-            </a>
+            </button>
 
             {user && (
               <div className="flex items-center gap-3">
