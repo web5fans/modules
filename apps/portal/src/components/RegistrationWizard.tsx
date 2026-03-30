@@ -11,8 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Check, Key, Loader2, Wallet, User, Server, FileCheck } from 'lucide-react';
-import { KEY_STORE_URL } from 'keystore/constants';
-import { buildCreateTransaction, sendCkbTransaction, fetchDidCkbCellsInfo } from 'did_module/logic';
+import { buildCreateTransaction, sendCkbTransaction, fetchDidCkbCellsInfo, updateDidKey } from 'did_module/logic';
 import { pdsCreateAccount } from 'pds_module/logic';
 import type { AtpAgent } from 'web5-api';
 
@@ -39,7 +38,7 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { client, connected, didKey } = useKeystore();
+  const { client, connected, didKey, connect, isConnecting } = useKeystore();
   const { agent, checkAvailability, isAvailable, isResolving } = usePds();
   const { login } = useUser();
   const { wallet, open } = ccc.useCcc();
@@ -150,11 +149,11 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
     }
   };
 
-  const handleCheckKeystore = () => {
+  const handleCheckKeystore = async () => {
     if (connected && didKey) {
       setStep(3);
     } else {
-      window.open(KEY_STORE_URL, '_blank');
+      await connect();
     }
   };
 
@@ -279,6 +278,40 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
       onComplete();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to complete registration');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateSignKey = async () => {
+    if (!signer || !client || !existingDidInfo) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const newDidKey = await client.getDIDKey();
+      if (!newDidKey) {
+        setError('No key available in keystore');
+        return;
+      }
+
+      const didCells = await fetchDidCkbCellsInfo(signer);
+
+      if (didCells.length === 0) {
+        setError('No DID cell found');
+        return;
+      }
+
+      const cell = didCells[0];
+      await updateDidKey(signer, cell.args, newDidKey);
+
+      setExistingDidInfo({
+        ...existingDidInfo,
+        didKey: newDidKey,
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update sign key');
     } finally {
       setIsLoading(false);
     }
@@ -423,13 +456,25 @@ export function RegistrationWizard({ onComplete }: RegistrationWizardProps) {
               )}
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => window.open(KEY_STORE_URL, '_blank')}>
-                Open Keystore
+              <Button variant="outline" onClick={connect} disabled={isConnecting}>
+                {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {isConnecting ? 'Connecting...' : 'Connect Keystore'}
               </Button>
-              <Button onClick={handleCompleteExistingDid} disabled={!keyMatches || isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Complete Registration
-              </Button>
+              {keyMatches ? (
+                <Button onClick={handleCompleteExistingDid} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Complete Registration
+                </Button>
+              ) : connected && didKey ? (
+                <Button onClick={handleUpdateSignKey} disabled={isLoading} variant="secondary">
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Update Key
+                </Button>
+              ) : (
+                <Button disabled>
+                  Complete Registration
+                </Button>
+              )}
             </CardFooter>
           </Card>
         );
