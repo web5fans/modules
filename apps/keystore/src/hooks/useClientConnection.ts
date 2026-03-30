@@ -5,7 +5,6 @@ import { getActiveKey } from '../utils/storage';
 
 type ClientRequest = {
   source: 'keystore-client';
-  origin: string;
   type: string;
   requestId: string;
   message?: string;
@@ -31,7 +30,12 @@ export function useClientConnection() {
       return;
     }
 
-    window.opener.postMessage({ source: 'keystore-auth', type: 'ready' }, '*');
+    // Security: Only send ready to parent origin from URL param (avoids broadcasting to '*')
+    const urlParams = new URLSearchParams(window.location.search);
+    const parentOrigin = urlParams.get('origin');
+    if (parentOrigin && isOriginAllowed(parentOrigin)) {
+      window.opener.postMessage({ source: 'keystore-auth', type: 'ready' }, parentOrigin);
+    }
 
     const handleMessage = async (event: MessageEvent) => {
       const data = event.data;
@@ -39,10 +43,12 @@ export function useClientConnection() {
       if (data.source !== 'keystore-client') return;
 
       const request = data as ClientRequest;
-      if (!request.origin || !isOriginAllowed(request.origin)) return;
+      // Security: Use event.origin (browser-guaranteed) instead of request.origin (client-controlled)
+      const actualOrigin = event.origin;
+      if (!isOriginAllowed(actualOrigin)) return;
 
       const result = await processRequest(request);
-      window.opener.postMessage(result, request.origin);
+      window.opener.postMessage(result, actualOrigin);
     };
 
     window.addEventListener('message', handleMessage);
